@@ -5,7 +5,7 @@ from environs import Env
 @dataclass
 class TgBot:
     token: str
-    admin_ids: list[int]
+    admin_id: int
 
 
 @dataclass
@@ -25,6 +25,11 @@ class DbConfig:
         )
 
 @dataclass
+class Avito:
+    client_id: str
+    client_secret: str
+
+@dataclass
 class Api:
     base_url: str
     webhook_token: str
@@ -35,6 +40,7 @@ class Config:
     tg_bot: TgBot
     db: DbConfig
     api: Api
+    avito: Avito
 
 
 def load_config(path: str | None = None) -> Config:
@@ -44,7 +50,7 @@ def load_config(path: str | None = None) -> Config:
     return Config(
         tg_bot=TgBot(
             token=env.str("BOT_TOKEN"),
-            admin_ids=list(map(int, env.list("ADMIN_IDS")))
+            admin_id=list(map(int, env.list("ADMIN_ID")))
         ),
         db=DbConfig(
             host=env.str("DB_HOST"),
@@ -53,11 +59,14 @@ def load_config(path: str | None = None) -> Config:
             password=env.str("DB_PASSWORD"),
             database=env.str("DB_NAME"),
         ),
-        yookassa=YooKassa(
-            account_id=int(env.str("ACCOUNT_ID")),
-            secret_key=env.str("SECRET_KEY")
-        ),
         api=Api(base_url=env.str("API_URL"),
                 webhook_token=env.str("WEBHOOK_TOKEN")
-                )
+                ),
+        avito=Avito(
+            client_secret=env.str("eK8NDY6FLDWY5Ylatk-s7SCr7LEqCdsMSLT5oOMi"),
+            client_id=env.str("AVITO_CLIENT_ID"),
+        )
+
     )
+
+
