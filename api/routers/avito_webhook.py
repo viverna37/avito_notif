@@ -1,5 +1,3 @@
-from os import access
-
 from fastapi import APIRouter, Request, Header, HTTPException, Depends
 
 from api.config import Config
@@ -13,24 +11,32 @@ router = APIRouter(prefix="/avito", tags=["avito"])
 
 @router.post("/webhook")
 async def avito_webhook(
-        request: Request,
-        x_avito_messenger_signature: str | None = Header(default=None),
-        config: Config = Depends(get_config),
-        chats_repository: ChatsRepository = Depends(get_chats_repository)
-
+    request: Request,
+    x_avito_messenger_signature: str | None = Header(default=None),
+    config: Config = Depends(get_config),
+    chats_repository: ChatsRepository = Depends(get_chats_repository),
 ):
+    """Webhook Avito Messenger.
+
+    Логика:
+    - Проверяем подпись (HMAC) по WEBHOOK_TOKEN (если в Avito задан secret)
+    - Парсим chat_id и text
+    - Всегда уведомляем в TG
+    - Если чат НОВЫЙ (chat_id ещё не встречался) -> отправляем автоответ в Avito
+    """
+
     raw = await request.body()
 
+    # если ты в Avito указал secret для вебхука — подпись должна сходиться
     ok = verify_hmac_sha256(raw, config.api.webhook_token, x_avito_messenger_signature)
     if not ok:
         raise HTTPException(status_code=401, detail="Bad signature")
 
-
     data = await request.json()
 
-    # мягкий парсинг
     hook = AvitoWebhook.model_validate(data)
     chat_id = hook.payload.value.chat_id if (hook.payload and hook.payload.value) else None
+
     text = ""
     if hook.payload and hook.payload.value and hook.payload.value.content:
         text = str(hook.payload.value.content.get("text") or "")
@@ -41,13 +47,17 @@ async def avito_webhook(
     tg = get_tg()
     avito = get_avito()
 
-    # уведомление тебе о любом входящем
+    # 1) уведомление тебе
     await tg.send(f"💬 Avito сообщение\nchat_id: {chat_id}\n{text}")
-    is_new_chat = await chats_repository.get_chat(str(chat_id))
-    # автоответ только на новый chat_id
+
+    # 2) новый чат? (репозиторий сам создаёт запись при отсутствии)
+    existed = await chats_repository.get_chat(str(chat_id))
+    is_new_chat = existed is None
+
     if is_new_chat:
         try:
-            await avito.send_message(access_token, chat_id, text)
+            # автоответ только на новые чаты
+            await avito.send_message_text(str(chat_id), "Здравствуйте! Спасибо за сообщение 🙂 Скоро отвечу.")
             await tg.send(f"✅ Автоответ отправлен (новый чат): {chat_id}")
         except Exception as e:
             await tg.send(f"⚠️ Не смог отправить автоответ: {e}")

@@ -50,7 +50,7 @@ def load_config(path: str | None = None) -> Config:
     return Config(
         tg_bot=TgBot(
             token=env.str("BOT_TOKEN"),
-            admin_id=list(map(int, env.list("ADMIN_ID")))
+            admin_id=env.int("ADMIN_ID")
         ),
         db=DbConfig(
             host=env.str("DB_HOST"),
@@ -63,8 +63,8 @@ def load_config(path: str | None = None) -> Config:
                 webhook_token=env.str("WEBHOOK_TOKEN")
                 ),
         avito=Avito(
-            client_secret=env.str("eK8NDY6FLDWY5Ylatk-s7SCr7LEqCdsMSLT5oOMi"),
             client_id=env.str("AVITO_CLIENT_ID"),
+            client_secret=env.str("AVITO_CLIENT_SECRET"),
         )
 
     )
